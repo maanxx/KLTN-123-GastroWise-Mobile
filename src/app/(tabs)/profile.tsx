@@ -12,11 +12,13 @@ import {
   LogIn,
   Camera,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/authStore';
 import { COLORS } from '../../constants';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
@@ -40,7 +42,7 @@ export default function ProfileScreen() {
       <View
         style={{
           backgroundColor: '#ffffff',
-          paddingTop: 50,
+          paddingTop: Math.max(insets.top + 8, 46),
           paddingBottom: 16,
           paddingHorizontal: 20,
           borderBottomWidth: 1,

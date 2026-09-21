@@ -6,11 +6,7 @@ export const getBaseUrl = () => {
     return process.env.EXPO_PUBLIC_API_URL;
   }
   
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3001/api/v1';
-  }
-  
-  return 'http://localhost:3001/api/v1';
+  return 'http://10.161.30.252:3001/api/v1';
 };
 
 export const API_BASE_URL = getBaseUrl();

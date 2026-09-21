@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Search, MapPin, Star, Flame, Sparkles, SlidersHorizontal, Bell } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/authStore';
 import { apiClient } from '../../lib/api/client';
 import { COLORS } from '../../constants';
@@ -26,6 +27,7 @@ const CATEGORIES = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
 
   const [restaurants, setRestaurants] = useState<any[]>([]);
@@ -55,7 +57,7 @@ export default function HomeScreen() {
       <View
         style={{
           backgroundColor: '#ffffff',
-          paddingTop: 50,
+          paddingTop: Math.max(insets.top + 8, 46),
           paddingBottom: 16,
           paddingHorizontal: 20,
           borderBottomWidth: 1,
@@ -232,26 +234,31 @@ export default function HomeScreen() {
                 <View style={{ padding: 14 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={{ fontSize: 16, fontWeight: 'bold', color: COLORS.slate[900], flex: 1, marginRight: 8 }}>
-                      {item.name}
+                      {item.name || item.tenQuan || 'Nhà Hàng GastroWise'}
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
                       <Star size={14} color="#d97706" fill="#d97706" style={{ marginRight: 4 }} />
                       <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#b45309' }}>
-                        {item.rating || '4.8'}
+                        {(() => {
+                          const r = item.rating || item.diemTrungBinh;
+                          if (!r) return '4.8';
+                          const num = Number(r);
+                          return (num > 5 ? (num / 2) : num).toFixed(1);
+                        })()}
                       </Text>
                     </View>
                   </View>
 
                   <Text style={{ fontSize: 13, color: COLORS.slate[500], marginTop: 4 }} numberOfLines={1}>
-                    📍 {item.address || 'Gò Vấp, TP. Hồ Chí Minh'}
+                    📍 {item.diaChi || item.address || 'TP. Hồ Chí Minh'}
                   </Text>
 
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.slate[100] }}>
                     <Text style={{ fontSize: 13, fontWeight: 'bold', color: COLORS.primary[600] }}>
-                      {item.priceRange || '150.000đ - 350.000đ'}
+                      {item.giaCa || item.priceRange || '30.000đ - 150.000đ'}
                     </Text>
                     <Text style={{ fontSize: 12, color: COLORS.slate[500], fontWeight: '500' }}>
-                      {item.cuisineType || 'Ẩm thực Á - Âu'}
+                      {item.tags ? item.tags.split(',')[0] : (item.cuisineType || 'Nhà hàng')}
                     </Text>
                   </View>
                 </View>

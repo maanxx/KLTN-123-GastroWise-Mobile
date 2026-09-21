@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Search, Filter, Star, MapPin, Compass } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/api/client';
 import { COLORS } from '../../constants';
 
@@ -17,6 +18,7 @@ const FILTERS = ['Tất cả', 'Gần bạn (1-3km)', 'Đánh giá cao (4.5+★)
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('Tất cả');
@@ -39,9 +41,19 @@ export default function ExploreScreen() {
     }
   };
 
-  const filtered = restaurants.filter((r) =>
-    r.name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = restaurants.filter((r) => {
+    const restaurantName = r.name || r.tenQuan || '';
+    const matchesSearch = restaurantName.toLowerCase().includes(search.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    if (selectedFilter === 'Đánh giá cao (4.5+★)') {
+      const rating = Number(r.rating || r.diemTrungBinh || 0);
+      return rating >= 4.5;
+    }
+    
+    return true;
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -49,7 +61,7 @@ export default function ExploreScreen() {
       <View
         style={{
           backgroundColor: '#ffffff',
-          paddingTop: 50,
+          paddingTop: Math.max(insets.top + 8, 46),
           paddingBottom: 16,
           paddingHorizontal: 20,
           borderBottomWidth: 1,
@@ -141,21 +153,26 @@ export default function ExploreScreen() {
               <View style={{ flex: 1, padding: 12, justifyContent: 'space-between' }}>
                 <View>
                   <Text style={{ fontSize: 15, fontWeight: 'bold', color: COLORS.slate[900] }} numberOfLines={1}>
-                    {item.name}
+                    {item.tenQuan || item.name || 'Nhà hàng GastroWise'}
                   </Text>
                   <Text style={{ fontSize: 12, color: COLORS.slate[500], marginTop: 2 }} numberOfLines={1}>
-                    📍 {item.address || 'Gò Vấp, Hồ Chí Minh'}
+                    📍 {item.diaChi || item.address || 'TP. Hồ Chí Minh'}
                   </Text>
                 </View>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontSize: 12, fontWeight: 'bold', color: COLORS.primary[600] }}>
-                    {item.priceRange || '150.000đ - 300.000đ'}
+                    {item.giaCa || item.priceRange || '30.000đ - 150.000đ'}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Star size={12} color="#d97706" fill="#d97706" style={{ marginRight: 2 }} />
                     <Text style={{ fontSize: 12, fontWeight: 'bold', color: COLORS.slate[800] }}>
-                      {item.rating || '4.8'}
+                      {(() => {
+                        const r = item.rating || item.diemTrungBinh;
+                        if (!r) return '4.8';
+                        const num = Number(r);
+                        return (num > 5 ? (num / 2) : num).toFixed(1);
+                      })()}
                     </Text>
                   </View>
                 </View>

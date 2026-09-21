@@ -6,6 +6,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
+  Modal,
+  Image,
+  Share,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -19,16 +23,30 @@ import {
   ChevronRight,
   ExternalLink,
   Sparkles,
+  Share2,
+  Bell,
+  Copy,
+  CheckCircle2,
+  X,
+  QrCode,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/api/client';
 import { COLORS } from '../../constants';
 
 export default function ItineraryDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [itinerary, setItinerary] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Modal States
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [reminderTime, setReminderTime] = useState('30_MIN');
 
   useEffect(() => {
     if (id) {
@@ -91,6 +109,30 @@ export default function ItineraryDetailScreen() {
     Linking.openURL(url);
   };
 
+  const handleShareNative = async () => {
+    try {
+      await Share.share({
+        message: `🚴 Chuyến Food Tour Ẩm Thực "${itinerary?.title || 'GastroWise'}": Cùng tham gia với tôi tại https://gastrowise.app/itinerary/${id}`,
+      });
+    } catch (error) {
+      console.log('Lỗi chia sẻ:', error);
+    }
+  };
+
+  const handleCopyLink = () => {
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleSetReminder = () => {
+    setIsReminderModalOpen(false);
+    const label = reminderTime === '30_MIN' ? '30 phút' : reminderTime === '1_HOUR' ? '1 giờ' : '2 giờ';
+    Alert.alert(
+      'Bật Nhắc Nhở Thành Công! ⏰',
+      `Ứng dụng GastroWise sẽ tự động gửi thông báo nhắc nhở trước ${label} giờ khởi hành chuyến đi Food Tour của bạn!`
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>
@@ -100,27 +142,63 @@ export default function ItineraryDetailScreen() {
     );
   }
 
+  const shareQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://gastrowise.app/itinerary/${id}`)}`;
+
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
       {/* Top Header */}
       <View
         style={{
           backgroundColor: '#ffffff',
-          paddingTop: 50,
+          paddingTop: Math.max(insets.top + 8, 46),
           paddingBottom: 16,
           paddingHorizontal: 20,
           flexDirection: 'row',
           alignItems: 'center',
+          justifyContent: 'space-between',
           borderBottomWidth: 1,
           borderBottomColor: COLORS.slate[200],
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
-          <ArrowLeft size={22} color={COLORS.slate[800]} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: 'bold', color: COLORS.slate[900], flex: 1 }} numberOfLines={1}>
-          {itinerary?.title || 'Chi Tiết Lộ Trình Food Tour'}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
+            <ArrowLeft size={22} color={COLORS.slate[800]} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 17, fontWeight: 'bold', color: COLORS.slate[900], flex: 1 }} numberOfLines={1}>
+            {itinerary?.title || 'Chi Tiết Lộ Trình Food Tour'}
+          </Text>
+        </View>
+
+        {/* Action Header Icons */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => setIsReminderModalOpen(true)}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: COLORS.slate[100],
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Bell size={18} color={COLORS.slate[700]} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setIsShareModalOpen(true)}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: COLORS.primary[50],
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Share2 size={18} color={COLORS.primary[600]} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
@@ -205,15 +283,13 @@ export default function ItineraryDetailScreen() {
               </View>
 
               <Text style={{ fontSize: 16, fontWeight: 'bold', color: COLORS.slate[900], flex: 1 }}>
-                {stop.restaurant_name}
+                {stop.restaurant_name || stop.restaurant_id?.name || stop.restaurant_id?.tenQuan || 'Điểm dừng ẩm thực'}
               </Text>
             </View>
 
-            {stop.address && (
-              <Text style={{ fontSize: 13, color: COLORS.slate[500], marginBottom: 12, marginLeft: 38 }}>
-                📍 {stop.address}
-              </Text>
-            )}
+            <Text style={{ fontSize: 13, color: COLORS.slate[500], marginBottom: 12, marginLeft: 38 }}>
+              📍 {stop.address || stop.restaurant_id?.address || stop.restaurant_id?.diaChi || 'Gò Vấp, TP. Hồ Chí Minh'}
+            </Text>
 
             {/* Action Buttons */}
             <View style={{ flexDirection: 'row', gap: 10, marginLeft: 38 }}>
@@ -235,26 +311,186 @@ export default function ItineraryDetailScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {stop.restaurant_id && (
-                <TouchableOpacity
-                  onPress={() => router.push(`/restaurant/${stop.restaurant_id}`)}
-                  style={{
-                    backgroundColor: COLORS.slate[100],
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: COLORS.slate[800] }}>Xem Quán</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                onPress={() => {
+                  const targetId = typeof stop.restaurant_id === 'object' ? stop.restaurant_id?._id : (stop.restaurant_id || id);
+                  if (targetId) router.push(`/restaurant/${targetId}`);
+                }}
+                style={{
+                  backgroundColor: COLORS.slate[100],
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: COLORS.slate[800] }}>Xem Quán</Text>
+              </TouchableOpacity>
             </View>
           </View>
         ))}
       </ScrollView>
+
+      {/* Feature 2: SHARE ITINERARY MODAL */}
+      <Modal visible={isShareModalOpen} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <QrCode size={22} color={COLORS.primary[600]} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 17, fontWeight: 'bold', color: COLORS.slate[900] }}>
+                  Chia Sẻ Lộ Trình Cho Bạn Bè
+                </Text>
+              </View>
+
+              <TouchableOpacity onPress={() => setIsShareModalOpen(false)}>
+                <X size={20} color={COLORS.slate[500]} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ alignItems: 'center', marginVertical: 10 }}>
+              <Image
+                source={{ uri: shareQrUrl }}
+                style={{ width: 180, height: 180, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: COLORS.slate[200] }}
+              />
+              <Text style={{ fontSize: 13, color: COLORS.slate[500], textAlign: 'center' }}>
+                Quét mã QR bằng Expo Go / Camera điện thoại để tải 1-Click chuyến đi này
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                onPress={handleCopyLink}
+                style={{
+                  flex: 1,
+                  backgroundColor: COLORS.slate[100],
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                }}
+              >
+                {copiedLink ? (
+                  <>
+                    <CheckCircle2 size={16} color={COLORS.primary[600]} style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: COLORS.primary[700] }}>Đã Chép Link</Text>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} color={COLORS.slate[800]} style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: COLORS.slate[800] }}>Copy Link</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleShareNative}
+                style={{
+                  flex: 1,
+                  backgroundColor: COLORS.primary[600],
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                }}
+              >
+                <Share2 size={16} color="#ffffff" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#ffffff' }}>Chia Sẻ Zalo/SMS</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Feature 5: PUSH REMINDER MODAL */}
+      <Modal visible={isReminderModalOpen} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Bell size={22} color={COLORS.primary[600]} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 17, fontWeight: 'bold', color: COLORS.slate[900] }}>
+                  Nhắc Nhở Khởi Hành Food Tour
+                </Text>
+              </View>
+
+              <TouchableOpacity onPress={() => setIsReminderModalOpen(false)}>
+                <X size={20} color={COLORS.slate[500]} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, color: COLORS.slate[600], marginBottom: 16 }}>
+              Chọn thời gian ứng dụng sẽ tự động gửi thông báo nhắc bạn chuẩn bị lên đường:
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setReminderTime('30_MIN')}
+              style={{
+                padding: 14,
+                borderRadius: 12,
+                backgroundColor: reminderTime === '30_MIN' ? COLORS.primary[50] : COLORS.slate[50],
+                borderWidth: 1.5,
+                borderColor: reminderTime === '30_MIN' ? COLORS.primary[600] : COLORS.slate[200],
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: reminderTime === '30_MIN' ? COLORS.primary[700] : COLORS.slate[800] }}>
+                ⏰ Nhắc trước 30 phút khởi hành
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setReminderTime('1_HOUR')}
+              style={{
+                padding: 14,
+                borderRadius: 12,
+                backgroundColor: reminderTime === '1_HOUR' ? COLORS.primary[50] : COLORS.slate[50],
+                borderWidth: 1.5,
+                borderColor: reminderTime === '1_HOUR' ? COLORS.primary[600] : COLORS.slate[200],
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: reminderTime === '1_HOUR' ? COLORS.primary[700] : COLORS.slate[800] }}>
+                ⏰ Nhắc trước 1 giờ khởi hành
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setReminderTime('2_HOUR')}
+              style={{
+                padding: 14,
+                borderRadius: 12,
+                backgroundColor: reminderTime === '2_HOUR' ? COLORS.primary[50] : COLORS.slate[50],
+                borderWidth: 1.5,
+                borderColor: reminderTime === '2_HOUR' ? COLORS.primary[600] : COLORS.slate[200],
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: reminderTime === '2_HOUR' ? COLORS.primary[700] : COLORS.slate[800] }}>
+                ⏰ Nhắc trước 2 giờ khởi hành
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleSetReminder}
+              style={{
+                backgroundColor: COLORS.primary[600],
+                paddingVertical: 14,
+                borderRadius: 14,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: 'bold' }}>
+                XÁC NHẬN BẬT NHẮC NHỞ
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

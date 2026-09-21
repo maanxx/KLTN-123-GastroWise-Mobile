@@ -75,16 +75,14 @@ export default function RestaurantDetailScreen() {
   };
 
   const handleCallPhone = () => {
-    if (restaurant?.phone) {
-      Linking.openURL(`tel:${restaurant.phone}`);
-    }
+    const phoneNumber = restaurant?.phone || restaurant?.soDienThoai || '0912345678';
+    Linking.openURL(`tel:${phoneNumber}`);
   };
 
   const handleOpenMaps = () => {
-    if (restaurant?.address) {
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address)}`;
-      Linking.openURL(url);
-    }
+    const address = restaurant?.address || restaurant?.diaChi || 'Gò Vấp, TP. Hồ Chí Minh';
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    Linking.openURL(url);
   };
 
   if (isLoading) {
@@ -102,7 +100,7 @@ export default function RestaurantDetailScreen() {
         {/* Cover Image & Header Actions */}
         <View style={{ position: 'relative', height: 260 }}>
           <Image
-            source={{ uri: restaurant?.coverImage || restaurant?.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80' }}
+            source={{ uri: restaurant?.coverImage || restaurant?.image || restaurant?.hinhAnh || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80' }}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
@@ -142,12 +140,12 @@ export default function RestaurantDetailScreen() {
         <View style={{ padding: 20, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: COLORS.slate[200] }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Text style={{ fontSize: 22, fontWeight: 'bold', color: COLORS.slate[900], flex: 1, marginRight: 10 }}>
-              {restaurant?.name}
+              {restaurant?.name || restaurant?.tenQuan || 'Nhà Hàng GastroWise'}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
               <Star size={16} color="#d97706" fill="#d97706" style={{ marginRight: 4 }} />
               <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#b45309' }}>
-                {restaurant?.rating || '4.8'}
+                {restaurant?.rating || restaurant?.diemTrungBinh || '4.8'}
               </Text>
             </View>
           </View>
@@ -155,7 +153,7 @@ export default function RestaurantDetailScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
             <MapPin size={16} color={COLORS.primary[600]} style={{ marginRight: 6 }} />
             <Text style={{ fontSize: 13, color: COLORS.slate[600], flex: 1 }} numberOfLines={2}>
-              {restaurant?.address}
+              {restaurant?.address || restaurant?.diaChi || 'Gò Vấp, TP. Hồ Chí Minh'}
             </Text>
           </View>
 

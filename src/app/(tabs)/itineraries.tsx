@@ -9,11 +9,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Route, Plus, MapPin, Sparkles, Navigation, Clock, Leaf, ChevronRight } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/api/client';
 import { COLORS } from '../../constants';
 
 export default function ItinerariesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [itineraries, setItineraries] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,7 +64,7 @@ export default function ItinerariesScreen() {
       <View
         style={{
           backgroundColor: '#ffffff',
-          paddingTop: 50,
+          paddingTop: Math.max(insets.top + 8, 46),
           paddingBottom: 16,
           paddingHorizontal: 20,
           borderBottomWidth: 1,

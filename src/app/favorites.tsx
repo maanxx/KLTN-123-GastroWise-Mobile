@@ -7,20 +7,33 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Heart, Star, MapPin, Dna, Sparkles, SlidersHorizontal } from 'lucide-react-native';
+import { ArrowLeft, Heart, Star, MapPin, Dna, Sparkles, FolderPlus, X, Plus, Check } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../lib/api/client';
 import { COLORS } from '../constants';
 
-const CATEGORY_FILTERS = ['Tất cả', 'Món Việt', 'Lẩu & Nướng', 'Cafe', 'Hải Sản'];
-
 export default function FavoritesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [favorites, setFavorites] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
+
+  // Feature 4: Folder Collections State
+  const [collections, setCollections] = useState<string[]>([
+    'Tất cả',
+    'Quán Khuya',
+    'Hẹn Hò 2 Người',
+    'Quán Gia Đình',
+    'Góc Chill Cafe',
+  ]);
+  const [selectedCollection, setSelectedCollection] = useState('Tất cả');
+  const [isAddCollectionModalOpen, setIsAddCollectionModalOpen] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
 
   useEffect(() => {
     fetchFavorites();
@@ -32,12 +45,32 @@ export default function FavoritesScreen() {
       const res: any = await apiClient.get('/restaurants');
       const data = Array.isArray(res) ? res : res?.data || [];
       // Mock saved list
-      setFavorites(data.slice(0, 3));
+      setFavorites(data.slice(0, 4));
     } catch (e) {
       console.log('Lỗi lấy danh sách yêu thích:', e);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCreateCollection = () => {
+    if (!newCollectionName.trim()) {
+      Alert.alert('Thông báo', 'Vui lòng nhập tên bộ sưu tập!');
+      return;
+    }
+
+    const name = newCollectionName.trim();
+    if (collections.includes(name)) {
+      Alert.alert('Thông báo', 'Bộ sưu tập này đã tồn tại!');
+      return;
+    }
+
+    setCollections([...collections, name]);
+    setSelectedCollection(name);
+    setNewCollectionName('');
+    setIsAddCollectionModalOpen(false);
+
+    Alert.alert('Thành Công! 🎉', `Đã tạo bộ sưu tập mới "${name}"!`);
   };
 
   const handleRemoveFavorite = (id: string) => {
@@ -59,21 +92,40 @@ export default function FavoritesScreen() {
       <View
         style={{
           backgroundColor: '#ffffff',
-          paddingTop: 50,
+          paddingTop: Math.max(insets.top + 8, 46),
           paddingBottom: 16,
           paddingHorizontal: 20,
           flexDirection: 'row',
           alignItems: 'center',
+          justifyContent: 'space-between',
           borderBottomWidth: 1,
           borderBottomColor: COLORS.slate[200],
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
-          <ArrowLeft size={22} color={COLORS.slate[800]} />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
+            <ArrowLeft size={22} color={COLORS.slate[800]} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: COLORS.slate[900] }}>
+            Bộ Sưu Tập Yêu Thích
+          </Text>
+        </View>
+
+        {/* Create Collection Button */}
+        <TouchableOpacity
+          onPress={() => setIsAddCollectionModalOpen(true)}
+          style={{
+            backgroundColor: COLORS.slate[900],
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            borderRadius: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <FolderPlus size={15} color="#ffffff" style={{ marginRight: 4 }} />
+          <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>Tạo Folder</Text>
         </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: 'bold', color: COLORS.slate[900] }}>
-          Bộ Sưu Tập Yêu Thích
-        </Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
@@ -146,24 +198,28 @@ export default function FavoritesScreen() {
           </View>
         </View>
 
-        {/* Category Filters */}
+        {/* Feature 4: Smart Favorite Collection Folders Slider */}
+        <Text style={{ fontSize: 15, fontWeight: 'bold', color: COLORS.slate[900], marginBottom: 10 }}>
+          📁 Thư Mục Bộ Sưu Tập Theo Chủ Đề:
+        </Text>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ marginBottom: 16 }}>
-          {CATEGORY_FILTERS.map((cat) => (
+          {collections.map((col) => (
             <TouchableOpacity
-              key={cat}
-              onPress={() => setSelectedCategory(cat)}
+              key={col}
+              onPress={() => setSelectedCollection(col)}
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 8,
                 borderRadius: 14,
                 marginRight: 8,
-                backgroundColor: selectedCategory === cat ? COLORS.slate[900] : '#ffffff',
+                backgroundColor: selectedCollection === col ? COLORS.slate[900] : '#ffffff',
                 borderWidth: 1,
-                borderColor: selectedCategory === cat ? COLORS.slate[900] : COLORS.slate[200],
+                borderColor: selectedCollection === col ? COLORS.slate[900] : COLORS.slate[200],
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: 'bold', color: selectedCategory === cat ? '#ffffff' : COLORS.slate[700] }}>
-                {cat}
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: selectedCollection === col ? '#ffffff' : COLORS.slate[700] }}>
+                {col}
               </Text>
             </TouchableOpacity>
           ))}
@@ -230,6 +286,61 @@ export default function FavoritesScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Feature 4: CREATE NEW FOLDER COLLECTION MODAL */}
+      <Modal visible={isAddCollectionModalOpen} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#ffffff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <FolderPlus size={22} color={COLORS.primary[600]} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 17, fontWeight: 'bold', color: COLORS.slate[900] }}>
+                  Tạo Thư Mục Bộ Sưu Tập Mới
+                </Text>
+              </View>
+
+              <TouchableOpacity onPress={() => setIsAddCollectionModalOpen(false)}>
+                <X size={20} color={COLORS.slate[500]} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, color: COLORS.slate[600], marginBottom: 12 }}>
+              Nhập tên bộ sưu tập tùy chỉnh (Ví dụ: *"Quán ngon ăn trưa công ty"*, *"Hẹn hò cuối tuần"*):
+            </Text>
+
+            <TextInput
+              style={{
+                backgroundColor: COLORS.slate[50],
+                borderRadius: 14,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: COLORS.slate[200],
+                fontSize: 14,
+                color: COLORS.slate[900],
+                marginBottom: 20,
+              }}
+              placeholder="VD: Quán ngon cùng đại gia đình..."
+              placeholderTextColor={COLORS.slate[400]}
+              value={newCollectionName}
+              onChangeText={setNewCollectionName}
+            />
+
+            <TouchableOpacity
+              onPress={handleCreateCollection}
+              style={{
+                backgroundColor: COLORS.primary[600],
+                paddingVertical: 14,
+                borderRadius: 14,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: 'bold' }}>
+                TẠO BỘ SƯU TẬP
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
