@@ -33,10 +33,23 @@ export default function HomeScreen() {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [weatherData, setWeatherData] = useState<any>(null);
 
   useEffect(() => {
     fetchRestaurants();
+    fetchWeather();
   }, []);
+
+  const fetchWeather = async () => {
+    try {
+      const res: any = await apiClient.get('/restaurants/weather-recommend');
+      if (res && res.weather) {
+        setWeatherData(res.weather);
+      }
+    } catch (e) {
+      console.log('Lỗi lấy gợi ý thời tiết:', e);
+    }
+  };
 
   const fetchRestaurants = async () => {
     try {
@@ -72,7 +85,7 @@ export default function HomeScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
               <MapPin size={16} color={COLORS.primary[600]} style={{ marginRight: 4 }} />
               <Text style={{ fontSize: 15, fontWeight: 'bold', color: COLORS.slate[900] }}>
-                Gò Vấp, Hồ Chí Minh
+                {weatherData?.city || 'Hồ Chí Minh'}
               </Text>
             </View>
           </View>
@@ -156,14 +169,16 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Dynamic Weather & Context Recommendation */}
-        <View style={{ marginHorizontal: 20, marginBottom: 20, padding: 14, backgroundColor: '#fef3c7', borderRadius: 16, borderWidth: 1, borderColor: '#fde68a', flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ fontSize: 24, marginRight: 12 }}>☀️</Text>
+        <View style={{ marginHorizontal: 20, marginBottom: 20, padding: 14, backgroundColor: weatherData?.weather_type === 'rainy' ? '#e0f2fe' : '#fef3c7', borderRadius: 16, borderWidth: 1, borderColor: weatherData?.weather_type === 'rainy' ? '#bae6fd' : '#fde68a', flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ fontSize: 24, marginRight: 12 }}>
+            {weatherData?.weather_type === 'rainy' ? '🌧️' : (weatherData?.weather_type === 'hot' ? '☀️' : '🌤️')}
+          </Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#b45309' }}>
-              Gợi Ý Theo Thời Tiết Nắng Nóng (32°C)
+            <Text style={{ fontSize: 13, fontWeight: 'bold', color: weatherData?.weather_type === 'rainy' ? '#0369a1' : '#b45309' }}>
+              {weatherData?.banner_title || 'Gợi Ý Theo Thời Tiết Nắng Nóng (32°C)'}
             </Text>
-            <Text style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>
-              Nên dùng các món thanh mát: Trà sữa kem béo, Chè Thái, Phở cuốn & Hải sản tươi ngon.
+            <Text style={{ fontSize: 12, color: weatherData?.weather_type === 'rainy' ? '#075985' : '#92400e', marginTop: 2 }}>
+              {weatherData?.banner_desc || 'Nên dùng các món thanh mát: Trà sữa kem béo, Chè Thái, Phở cuốn & Hải sản tươi ngon.'}
             </Text>
           </View>
         </View>
