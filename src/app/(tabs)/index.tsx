@@ -91,6 +91,7 @@ export default function HomeScreen() {
           </View>
 
           <TouchableOpacity
+            onPress={() => router.push('/notifications')}
             style={{
               width: 40,
               height: 40,
@@ -192,6 +193,7 @@ export default function HomeScreen() {
             {CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
+                onPress={() => router.push({ pathname: '/(tabs)/explore', params: { category: cat.name } })}
                 style={{
                   alignItems: 'center',
                   backgroundColor: '#ffffff',

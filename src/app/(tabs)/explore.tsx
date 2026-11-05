@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Search, Filter, Star, MapPin, Compass } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/api/client';
 import { COLORS } from '../../constants';
@@ -19,10 +19,17 @@ const FILTERS = ['Tất cả', 'Gần bạn (1-3km)', 'Đánh giá cao (4.5+★)
 export default function ExploreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { category } = useLocalSearchParams<{ category?: string }>();
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('Tất cả');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(category || '');
+
+  useEffect(() => {
+    if (category) {
+      setSearch(category);
+    }
+  }, [category]);
 
   useEffect(() => {
     fetchData();
@@ -42,13 +49,16 @@ export default function ExploreScreen() {
   };
 
   const filtered = restaurants.filter((r) => {
-    const restaurantName = r.name || r.tenQuan || '';
-    const matchesSearch = restaurantName.toLowerCase().includes(search.toLowerCase());
+    const restaurantName = (r.name || r.tenQuan || '').toLowerCase();
+    const tags = (r.tags || r.cuisineType || '').toLowerCase();
+    const query = search.toLowerCase();
+    const matchesSearch = !query || restaurantName.includes(query) || tags.includes(query);
     
     if (!matchesSearch) return false;
 
     if (selectedFilter === 'Đánh giá cao (4.5+★)') {
-      const rating = Number(r.rating || r.diemTrungBinh || 0);
+      const rawRating = Number(r.rating || r.diemTrungBinh || 0);
+      const rating = rawRating > 5 ? rawRating / 2 : rawRating;
       return rating >= 4.5;
     }
     

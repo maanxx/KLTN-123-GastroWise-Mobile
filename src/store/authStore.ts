@@ -47,10 +47,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const res: any = await apiClient.post('/auth/login', { email, password });
-      const { accessToken, user } = res;
+      const token = res.accessToken || res.token;
+      const user = res.user;
 
-      if (accessToken && user) {
-        await get().setAuth(user, accessToken);
+      if (token && user) {
+        await get().setAuth(user, token);
       }
 
       set({ isLoading: false });
@@ -65,6 +66,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const res: any = await apiClient.post('/auth/register', { name, email, phone, password });
+      const token = res.accessToken || res.token;
+      const user = res.user;
+
+      if (token && user) {
+        await get().setAuth(user, token);
+      }
+
       set({ isLoading: false });
       return res;
     } catch (err) {

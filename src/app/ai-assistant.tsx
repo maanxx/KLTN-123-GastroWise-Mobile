@@ -58,16 +58,22 @@ export default function AIAssistantScreen() {
 
     try {
       setIsLoading(true);
-      // Gọi Backend AI endpoint hoặc Gemini AI Service
-      const res: any = await apiClient.post('/reviews/ai-insight', { prompt: query.trim() }).catch(() => null);
+      // Gọi Backend AI endpoint thực tế
+      const res: any = await apiClient.post('/restaurants/chat', { message: query.trim() }).catch(() => null);
       
-      const aiReplyText =
-        res?.insight ||
-        res?.reply ||
-        `Dựa trên yêu cầu "${query}", GastroWise gợi ý cho bạn: 
+      let aiReplyText = res?.reply;
+      if (!aiReplyText) {
+        aiReplyText = `Dựa trên yêu cầu "${query}", GastroWise gợi ý cho bạn: 
 1. Nhà Hàng Lẩu Nướng King BBQ (199k - Gò Vấp)
 2. Quán Lẩu Thái Tom Yum (150k - Bình Thạnh)
-Bạn có muốn đặt bàn ngay không?`;
+Bạn có muốn xem chi tiết hoặc đặt bàn ngay không?`;
+      } else if (res?.data && res.data.length > 0) {
+        aiReplyText += '\n\n📍 Gợi ý tiêu biểu:\n' + res.data.slice(0, 3).map((r: any, idx: number) => {
+          const ratingNum = Number(r.diemTrungBinh || 4.8);
+          const formattedRating = (ratingNum > 5 ? ratingNum / 2 : ratingNum).toFixed(1);
+          return `${idx + 1}. ${r.tenQuan || r.name} - ⭐ ${formattedRating}\n   ${r.diaChi || 'TP. Hồ Chí Minh'}`;
+        }).join('\n');
+      }
 
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),

@@ -131,7 +131,7 @@ export default function ItinerariesScreen() {
               Lên Lộ Trình AI Tự Động
             </Text>
             <Text style={{ color: COLORS.slate[400], fontSize: 12, marginTop: 2 }}>
-              Nhập khẩu vị & ngân sách -> AI tự động tối ưu hóa đường đi ngắn nhất
+              Nhập khẩu vị &amp; ngân sách → AI tự động tối ưu hóa đường đi ngắn nhất
             </Text>
           </View>
         </TouchableOpacity>

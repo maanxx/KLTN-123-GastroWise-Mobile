@@ -14,10 +14,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Star, Camera, Sparkles, Send, ThumbsUp } from 'lucide-react-native';
 import { apiClient } from '../../../lib/api/client';
 import { COLORS } from '../../../constants';
+import { useAuthStore } from '../../../store/authStore';
 
 export default function WriteReviewScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const user = useAuthStore((state) => state.user);
 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -34,20 +36,25 @@ export default function WriteReviewScreen() {
       setIsLoading(true);
       const payload = {
         restaurantId: id,
-        rating: rating,
-        comment: comment.trim(),
+        diemReview: rating,
+        noiDung: comment.trim(),
+        userName: user?.name || 'Khách hàng GastroWise',
+        userId: user?._id,
       };
 
       const res: any = await apiClient.post('/reviews', payload);
       setIsLoading(false);
 
-      const sentimentLabel = rating >= 4 ? 'POSITIVE (Tích cực)' : rating === 3 ? 'NEUTRAL (Trung tính)' : 'NEGATIVE (Cần cải thiện)';
+      const sentimentLabel = res?.aiSentimentLabel 
+        ? `${res.aiSentimentLabel} (${res.aiSentimentLabel === 'POSITIVE' ? 'Tích cực' : res.aiSentimentLabel === 'NEGATIVE' ? 'Cần cải thiện' : 'Trung tính'})`
+        : (rating >= 4 ? 'POSITIVE (Tích cực)' : rating === 3 ? 'NEUTRAL (Trung tính)' : 'NEGATIVE (Cần cải thiện)');
+
       setAiSentimentResult({
         label: sentimentLabel,
-        hashtags: ['#quanngon', '#phucvutot', '#gastrowise_ai'],
+        hashtags: res?.hashtags || ['#quanngon', '#phucvutot', '#gastrowise_ai'],
       });
 
-      Alert.alert('Thành Công! 🎉', `AI đã phân tích cảm xúc đánh giá: ${sentimentLabel}`, [
+      Alert.alert('Thành Công! 🎉', `Đánh giá đã được lưu! AI phân tích cảm xúc: ${sentimentLabel}`, [
         {
           text: 'Quay lại Nhà hàng',
           onPress: () => router.back(),
@@ -55,18 +62,7 @@ export default function WriteReviewScreen() {
       ]);
     } catch (err: any) {
       setIsLoading(false);
-      const sentimentLabel = rating >= 4 ? 'POSITIVE (Tích cực)' : 'NEUTRAL (Trung tính)';
-      setAiSentimentResult({
-        label: sentimentLabel,
-        hashtags: ['#quanngon', '#phucvutot'],
-      });
-
-      Alert.alert('Thành Công! 🎉', `AI đã nhận bài đánh giá & phân tích cảm xúc: ${sentimentLabel}`, [
-        {
-          text: 'Quay lại Nhà hàng',
-          onPress: () => router.back(),
-        },
-      ]);
+      Alert.alert('Lỗi', err?.message || 'Không thể gửi đánh giá lúc này.');
     }
   };
 

@@ -29,6 +29,9 @@ import {
   CheckCircle2,
   X,
   QrCode,
+  Trash2,
+  CheckCircle,
+  Ban,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/api/client';
@@ -131,6 +134,43 @@ export default function ItineraryDetailScreen() {
       'Bật Nhắc Nhở Thành Công! ⏰',
       `Ứng dụng GastroWise sẽ tự động gửi thông báo nhắc nhở trước ${label} giờ khởi hành chuyến đi Food Tour của bạn!`
     );
+  };
+
+  const handleUpdateStatus = async (newStatus: 'completed' | 'cancelled' | 'confirmed') => {
+    try {
+      setIsLoading(true);
+      await apiClient.patch(`/itineraries/${id}`, { status: newStatus });
+      setItinerary((prev: any) => ({ ...prev, status: newStatus }));
+      setIsLoading(false);
+      const statusText = newStatus === 'completed' ? 'Hoàn thành' : newStatus === 'cancelled' ? 'Hủy' : 'Xác nhận';
+      Alert.alert('Thành Công! 🎉', `Đã cập nhật trạng thái lộ trình: ${statusText}!`);
+    } catch (e: any) {
+      setIsLoading(false);
+      Alert.alert('Lỗi', e?.message || 'Không thể cập nhật trạng thái lúc này.');
+    }
+  };
+
+  const handleDeleteItinerary = () => {
+    Alert.alert('Xóa Lộ Trình', 'Bạn có chắc chắn muốn xóa lộ trình này?', [
+      { text: 'Quay lại', style: 'cancel' },
+      {
+        text: 'Xác nhận Xóa',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsLoading(true);
+            await apiClient.delete(`/itineraries/${id}`);
+            setIsLoading(false);
+            Alert.alert('Đã Xóa', 'Lộ trình đã được xóa thành công!', [
+              { text: 'OK', onPress: () => router.replace('/(tabs)/itineraries') },
+            ]);
+          } catch (e: any) {
+            setIsLoading(false);
+            Alert.alert('Lỗi', e?.message || 'Không thể xóa lộ trình lúc này.');
+          }
+        },
+      },
+    ]);
   };
 
   if (isLoading) {
@@ -245,6 +285,43 @@ export default function ItineraryDetailScreen() {
                 Tiết kiệm ~1.5kg CO2
               </Text>
             </View>
+
+            {itinerary?.status && (
+              <View
+                style={{
+                  backgroundColor:
+                    itinerary.status === 'completed'
+                      ? COLORS.emerald[50]
+                      : itinerary.status === 'cancelled'
+                      ? COLORS.rose[50]
+                      : COLORS.primary[50],
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 10,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                    color:
+                      itinerary.status === 'completed'
+                        ? COLORS.emerald[700]
+                        : itinerary.status === 'cancelled'
+                        ? COLORS.rose[600]
+                        : COLORS.primary[700],
+                  }}
+                >
+                  {itinerary.status === 'completed'
+                    ? '🟢 Đã hoàn thành'
+                    : itinerary.status === 'cancelled'
+                    ? '🔴 Đã hủy'
+                    : itinerary.status === 'confirmed'
+                    ? '🔵 Đã xác nhận'
+                    : '🟣 Đang lên kế hoạch'}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -331,6 +408,77 @@ export default function ItineraryDetailScreen() {
             </View>
           </View>
         ))}
+        {/* Management Actions Card */}
+        <View
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: 18,
+            padding: 16,
+            marginTop: 10,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: COLORS.slate[200],
+          }}
+        >
+          <Text style={{ fontSize: 15, fontWeight: 'bold', color: COLORS.slate[900], marginBottom: 12 }}>
+            Quản Lý Lộ Trình Chuyến Đi
+          </Text>
+
+          {itinerary?.status !== 'completed' && (
+            <TouchableOpacity
+              onPress={() => handleUpdateStatus('completed')}
+              style={{
+                backgroundColor: COLORS.emerald[600],
+                paddingVertical: 12,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 10,
+              }}
+            >
+              <CheckCircle size={16} color="#ffffff" style={{ marginRight: 6 }} />
+              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
+                Đánh Dấu Đã Hoàn Thành Chuyến Đi
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {itinerary?.status !== 'cancelled' && (
+            <TouchableOpacity
+              onPress={() => handleUpdateStatus('cancelled')}
+              style={{
+                backgroundColor: COLORS.slate[100],
+                paddingVertical: 12,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 10,
+              }}
+            >
+              <Ban size={16} color={COLORS.rose[600]} style={{ marginRight: 6 }} />
+              <Text style={{ color: COLORS.rose[600], fontWeight: 'bold', fontSize: 13 }}>
+                Hủy Chuyến Đi Này
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={handleDeleteItinerary}
+            style={{
+              paddingVertical: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+            }}
+          >
+            <Trash2 size={15} color={COLORS.slate[400]} style={{ marginRight: 4 }} />
+            <Text style={{ color: COLORS.slate[500], fontWeight: '600', fontSize: 12 }}>
+              Xóa Vĩnh Viễn Lộ Trình
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* Feature 2: SHARE ITINERARY MODAL */}

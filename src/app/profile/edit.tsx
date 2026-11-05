@@ -14,7 +14,8 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, User, Phone, Mail, Camera, CheckCircle2 } from 'lucide-react-native';
 import { useAuthStore } from '../../store/authStore';
 import { apiClient } from '../../lib/api/client';
-import { COLORS } from '../../constants';
+import { COLORS, STORAGE_KEYS } from '../../constants';
+import * as SecureStore from 'expo-secure-store';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -33,7 +34,18 @@ export default function EditProfileScreen() {
 
     try {
       setIsLoading(true);
-      await apiClient.put('/users/profile', { name: name.trim(), phone: phone.trim() });
+      await apiClient.patch('/auth/profile', {
+        firstName: name.trim(),
+        phone: phone.trim(),
+      });
+
+      if (user) {
+        const token = await SecureStore.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+        if (token) {
+          await useAuthStore.getState().setAuth({ ...user, name: name.trim(), phone: phone.trim() }, token);
+        }
+      }
+
       setIsLoading(false);
 
       Alert.alert('Thành Công! 🎉', 'Thông tin cá nhân đã được cập nhật!', [
@@ -44,12 +56,7 @@ export default function EditProfileScreen() {
       ]);
     } catch (err: any) {
       setIsLoading(false);
-      Alert.alert('Thành Công! 🎉', 'Thông tin cá nhân đã được cập nhật vào hệ thống!', [
-        {
-          text: 'Quay lại Hồ sơ',
-          onPress: () => router.back(),
-        },
-      ]);
+      Alert.alert('Cập nhật thất bại', err?.message || 'Không thể cập nhật thông tin lúc này.');
     }
   };
 
