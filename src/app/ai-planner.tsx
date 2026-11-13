@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Sparkles, MapPin, DollarSign, Clock, Compass, CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeft, Sparkles, MapPin, DollarSign, Clock, Compass, CheckCircle2, Navigation, Layers } from 'lucide-react-native';
 import { apiClient } from '../lib/api/client';
 import { COLORS } from '../constants';
 
@@ -22,7 +22,25 @@ const BUDGET_OPTIONS = [
   { label: '1.000.000đ', value: 1000000 },
 ];
 
-const TIME_OPTIONS = ['Buổi Trưa (11:00 - 13:30)', 'Buổi Chiều (14:00 - 17:00)', 'Buổi Tối (18:00 - 21:30)', 'Cả Ngày (10:00 - 22:00)'];
+const STOP_OPTIONS = [
+  { count: 2, label: '2 Chặng', desc: 'Ăn nhanh gọn' },
+  { count: 3, label: '3 Chặng', desc: 'Khai vị - Chính - Tráng miệng' },
+  { count: 4, label: '4 Chặng', desc: 'Food Tour đầy đủ' },
+  { count: 5, label: '5 Chặng', desc: 'Khám phá chuyên sâu' },
+];
+
+const MODE_OPTIONS = [
+  { mode: 'motorbike', label: '🛵 Xe máy', desc: 'Nhanh chóng & tiện lợi' },
+  { mode: 'car', label: '🚗 Ô tô / Taxi', desc: 'Thoải mái nhóm bạn' },
+  { mode: 'walking', label: '🚶 Đi bộ', desc: 'Dạo phố ẩm thực' },
+];
+
+const TIME_OPTIONS = [
+  'Buổi Trưa (11:00 - 13:30)',
+  'Buổi Chiều (14:00 - 17:00)',
+  'Buổi Tối (18:00 - 21:30)',
+  'Cả Ngày (10:00 - 22:00)',
+];
 
 export default function AiPlannerScreen() {
   const router = useRouter();
@@ -30,6 +48,8 @@ export default function AiPlannerScreen() {
 
   const [prompt, setPrompt] = useState(initialPrompt || 'Lẩu nướng & trà sữa ở Gò Vấp');
   const [budget, setBudget] = useState(300000);
+  const [selectedStops, setSelectedStops] = useState(3);
+  const [routingMode, setRoutingMode] = useState('motorbike');
   const [selectedTime, setSelectedTime] = useState('Buổi Tối (18:00 - 21:30)');
   const [startLocation, setStartLocation] = useState('Gò Vấp, TP. Hồ Chí Minh');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +66,8 @@ export default function AiPlannerScreen() {
         prompt: prompt.trim(),
         budget: budget,
         start_time: selectedTime,
+        stop_count: selectedStops,
+        routing_mode: routingMode,
         lat: 10.8354, // Tọa độ Gò Vấp mặc định
         lng: 106.666,
       };
@@ -117,10 +139,10 @@ export default function AiPlannerScreen() {
             <Sparkles size={28} color={COLORS.primary[500]} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 15 }}>
-                AI Smart Route Engine
+                AI Smart Route & Journey Optimizer
               </Text>
               <Text style={{ color: COLORS.slate[400], fontSize: 12, marginTop: 2 }}>
-                Tự động lọc quán ăn ngon + tính toán chặng di chuyển ngắn nhất
+                Google OR-Tools TSPTW + Tiến trình ẩm thực thực tế tại Sài Gòn
               </Text>
             </View>
           </View>
@@ -150,10 +172,81 @@ export default function AiPlannerScreen() {
             />
           </View>
 
-          {/* Section 2: Budget Selector */}
+          {/* Section 2: Stop Count Selector (TASK-BIZ-02-01) */}
           <View style={{ marginBottom: 20 }}>
             <Text style={{ fontSize: 14, fontWeight: 'bold', color: COLORS.slate[900], marginBottom: 8 }}>
-              💵 2. Ngân sách dự kiến cho chuyến đi
+              📍 2. Số lượng chặng dừng ẩm thực (Desired Stops)
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {STOP_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.count}
+                  onPress={() => setSelectedStops(opt.count)}
+                  style={{
+                    width: '48%',
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: selectedStops === opt.count ? COLORS.primary[50] : '#ffffff',
+                    borderWidth: 1.5,
+                    borderColor: selectedStops === opt.count ? COLORS.primary[600] : COLORS.slate[200],
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 'bold',
+                      color: selectedStops === opt.count ? COLORS.primary[700] : COLORS.slate[800],
+                    }}
+                  >
+                    {opt.label}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: COLORS.slate[500], marginTop: 2 }}>
+                    {opt.desc}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Section 3: Transport Mode Selector (TASK-BIZ-02-02) */}
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: COLORS.slate[900], marginBottom: 8 }}>
+              🛵 3. Phương tiện di chuyển (Routing Mode)
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {MODE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.mode}
+                  onPress={() => setRoutingMode(opt.mode)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    backgroundColor: routingMode === opt.mode ? COLORS.slate[900] : '#ffffff',
+                    borderWidth: 1,
+                    borderColor: routingMode === opt.mode ? COLORS.slate[900] : COLORS.slate[200],
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 'bold',
+                      color: routingMode === opt.mode ? '#ffffff' : COLORS.slate[800],
+                    }}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Section 4: Budget Selector (TASK-BIZ-02-04) */}
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: COLORS.slate[900], marginBottom: 8 }}>
+              💵 4. Ngân sách dự kiến cho chuyến đi
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {BUDGET_OPTIONS.map((opt) => (
@@ -184,10 +277,10 @@ export default function AiPlannerScreen() {
             </View>
           </View>
 
-          {/* Section 3: Time of Day */}
+          {/* Section 5: Time of Day (TASK-BIZ-02-03) */}
           <View style={{ marginBottom: 20 }}>
             <Text style={{ fontSize: 14, fontWeight: 'bold', color: COLORS.slate[900], marginBottom: 8 }}>
-              ⏰ 3. Khoảng thời gian di chuyển
+              ⏰ 5. Khoảng thời gian di chuyển
             </Text>
             {TIME_OPTIONS.map((timeOpt) => (
               <TouchableOpacity
@@ -215,10 +308,10 @@ export default function AiPlannerScreen() {
             ))}
           </View>
 
-          {/* Section 4: Start Location */}
+          {/* Section 6: Start Location */}
           <View style={{ marginBottom: 20 }}>
             <Text style={{ fontSize: 14, fontWeight: 'bold', color: COLORS.slate[900], marginBottom: 8 }}>
-              📍 4. Vị trí xuất phát của bạn
+              📍 6. Vị trí xuất phát của bạn
             </Text>
             <View
               style={{
@@ -274,7 +367,7 @@ export default function AiPlannerScreen() {
               <>
                 <Sparkles size={20} color="#ffffff" style={{ marginRight: 8 }} />
                 <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: 'bold' }}>
-                  TẠO LỘ TRÌNH VÀ TỐI ƯU ĐƯỜNG ĐỊ
+                  TẠO LỘ TRÌNH VÀ TỐI ƯU ĐƯỜNG ĐI
                 </Text>
               </>
             )}

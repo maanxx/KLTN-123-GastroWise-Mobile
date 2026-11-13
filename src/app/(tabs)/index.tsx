@@ -8,12 +8,14 @@ import {
   Image,
   ActivityIndicator,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Search, MapPin, Star, Flame, Sparkles, SlidersHorizontal, Bell } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/authStore';
 import { apiClient } from '../../lib/api/client';
+import { tracker } from '../../lib/analytics/tracker';
 import { COLORS } from '../../constants';
 
 const CATEGORIES = [
@@ -31,14 +33,30 @@ export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
 
   const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [personalizedRestaurants, setPersonalizedRestaurants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPersonalizedLoading, setIsPersonalizedLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [weatherData, setWeatherData] = useState<any>(null);
 
   useEffect(() => {
-    fetchRestaurants();
-    fetchWeather();
+    loadAllData();
   }, []);
+
+  const loadAllData = async () => {
+    await Promise.all([
+      fetchRestaurants(),
+      fetchWeather(),
+      fetchPersonalized(),
+    ]);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAllData();
+    setRefreshing(false);
+  };
 
   const fetchWeather = async () => {
     try {
@@ -48,6 +66,21 @@ export default function HomeScreen() {
       }
     } catch (e) {
       console.log('Lỗi lấy gợi ý thời tiết:', e);
+    }
+  };
+
+  const fetchPersonalized = async () => {
+    try {
+      setIsPersonalizedLoading(true);
+      const res: any = await apiClient.get('/restaurants/recommended', {
+        params: { lat: 10.7769, lon: 106.7009, limit: 8 },
+      });
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      setPersonalizedRestaurants(list);
+    } catch (e) {
+      console.log('Lỗi lấy gợi ý cá nhân hóa Taste DNA:', e);
+    } finally {
+      setIsPersonalizedLoading(false);
     }
   };
 
@@ -62,6 +95,21 @@ export default function HomeScreen() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRestaurantPress = (item: any, source: string = 'featured') => {
+    const id = item._id || item.id;
+    tracker.track({
+      eventType: 'click',
+      targetType: 'restaurant',
+      targetId: String(id),
+      metadata: {
+        source,
+        score: item.aiScore,
+        explanation: item.explanation,
+      },
+    });
+    router.push(`/restaurant/${id}`);
   };
 
   return (
@@ -124,14 +172,28 @@ export default function HomeScreen() {
             placeholderTextColor={COLORS.slate[400]}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onSubmitEditing={() => {
+              if (searchQuery.trim()) {
+                router.push({ pathname: '/(tabs)/explore', params: { search: searchQuery } });
+              }
+            }}
           />
-          <TouchableOpacity style={{ padding: 4 }}>
+          <TouchableOpacity 
+            style={{ padding: 4 }}
+            onPress={() => router.push('/(tabs)/explore')}
+          >
             <SlidersHorizontal size={18} color={COLORS.primary[600]} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 30 }} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary[600]]} />
+        }
+      >
         {/* Banner AI Gợi ý */}
         <TouchableOpacity
           onPress={() => router.push('/ai-planner')}
@@ -213,6 +275,126 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
+        {/* [TASK-P2-01 & TASK-P2-02] DÀNH RIÊNG CHO KHẨU VỊ (TASTE DNA MATCH) */}
+        <View style={{ marginBottom: 24 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Sparkles size={18} color={COLORS.primary[600]} style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 17, fontWeight: 'bold', color: COLORS.slate[900] }}>
+                Dành Riêng Cho Khẩu Vị
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push('/profile/taste-dna')}
+              style={{
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 12,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.primary[700] }}>
+                DNA của bạn →
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {isPersonalizedLoading ? (
+            <ActivityIndicator size="small" color={COLORS.primary[600]} style={{ marginVertical: 20 }} />
+          ) : personalizedRestaurants.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+              {personalizedRestaurants.map((item) => (
+                <TouchableOpacity
+                  key={`pers_${item._id || item.id}`}
+                  onPress={() => handleRestaurantPress(item, 'taste_dna_carousel')}
+                  style={{
+                    width: 250,
+                    backgroundColor: '#ffffff',
+                    borderRadius: 16,
+                    marginHorizontal: 6,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: COLORS.slate[200],
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 6,
+                    elevation: 2,
+                  }}
+                >
+                  <View style={{ position: 'relative' }}>
+                    <Image
+                      source={{ uri: item.image || item.coverImage || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80' }}
+                      style={{ width: '100%', height: 130 }}
+                      resizeMode="cover"
+                    />
+                    {item.tasteScore ? (
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          left: 8,
+                          backgroundColor: 'rgba(16, 185, 129, 0.95)',
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 8,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Sparkles size={11} color="#ffffff" style={{ marginRight: 3 }} />
+                        <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#ffffff' }}>
+                          {Math.round(item.tasteScore * 100)}% Hợp gu
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <View style={{ padding: 12 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 15, fontWeight: 'bold', color: COLORS.slate[900], flex: 1, marginRight: 6 }} numberOfLines={1}>
+                        {item.name || item.tenQuan || 'Nhà Hàng GastroWise'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Star size={12} color="#d97706" fill="#d97706" style={{ marginRight: 2 }} />
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#b45309' }}>
+                          {Number(item.rating || item.diemTrungBinh || 4.8).toFixed(1)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Explainability Pill */}
+                    <View
+                      style={{
+                        marginTop: 6,
+                        backgroundColor: '#f0fdf4',
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: '#bbf7d0',
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, color: '#15803d', fontWeight: '500' }} numberOfLines={1}>
+                        {item.explanation || '✨ Gợi ý phù hợp khẩu vị của bạn'}
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: COLORS.slate[100] }}>
+                      <Text style={{ fontSize: 12, color: COLORS.slate[500] }}>
+                        📍 {item.distance ? `${item.distance}km` : 'Gần bạn'}
+                      </Text>
+                      <Text style={{ fontSize: 12, fontWeight: 'bold', color: COLORS.primary[600] }}>
+                        {item.giaCa || item.priceRange || '30.000đ+'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : null}
+        </View>
+
         {/* Featured Restaurants List */}
         <View style={{ paddingHorizontal: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -233,7 +415,7 @@ export default function HomeScreen() {
             restaurants.slice(0, 6).map((item) => (
               <TouchableOpacity
                 key={item._id || item.id}
-                onPress={() => router.push(`/restaurant/${item._id || item.id}`)}
+                onPress={() => handleRestaurantPress(item, 'featured_feed')}
                 style={{
                   backgroundColor: '#ffffff',
                   borderRadius: 16,

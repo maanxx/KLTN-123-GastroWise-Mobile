@@ -11,6 +11,7 @@ import {
   ChevronRight,
   LogIn,
   Camera,
+  Dna,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/authStore';
@@ -160,6 +161,24 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            onPress={() => router.push('/profile/taste-dna' as any)}
+            style={{ flexDirection: 'row', alignItems: 'center', padding: 14 }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.primary[50], alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+              <Dna size={18} color={COLORS.primary[600]} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.slate[800] }}>
+                Bản đồ Khẩu vị Taste DNA 6-D
+              </Text>
+              <Text style={{ fontSize: 11, color: COLORS.primary[600], fontWeight: '500' }}>
+                Biểu đồ Radar & tinh chỉnh khẩu vị AI
+              </Text>
+            </View>
+            <ChevronRight size={18} color={COLORS.slate[400]} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={() => router.push('/favorites')}
             style={{ flexDirection: 'row', alignItems: 'center', padding: 14 }}
           >
@@ -167,7 +186,7 @@ export default function ProfileScreen() {
               <Heart size={18} color="#ef4444" />
             </View>
             <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.slate[800] }}>
-              Hồ sơ Taste DNA & Yêu thích
+              Danh sách Quán Yêu thích
             </Text>
             <ChevronRight size={18} color={COLORS.slate[400]} />
           </TouchableOpacity>

@@ -8,11 +8,12 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { Search, Filter, Star, MapPin, Compass } from 'lucide-react-native';
+import { Search, Filter, Star, MapPin, Compass, Navigation } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/api/client';
 import { COLORS } from '../../constants';
+import { tracker } from '../../lib/analytics/tracker';
 
 const FILTERS = ['Tất cả', 'Gần bạn (1-3km)', 'Đánh giá cao (4.5+★)', 'Giá tốt'];
 
@@ -33,12 +34,27 @@ export default function ExploreScreen() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedFilter]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const res: any = await apiClient.get('/restaurants');
+      let res: any;
+
+      if (selectedFilter === 'Gần bạn (1-3km)') {
+        // [TASK-P0-01] Sử dụng API GeoJSON 2dsphere Nearby Search
+        res = await apiClient.get('/restaurants/nearby', {
+          params: {
+            lat: 10.7769,
+            lon: 106.7009,
+            radiusKm: 3,
+            limit: 30,
+          },
+        });
+      } else {
+        res = await apiClient.get('/restaurants');
+      }
+
       const data = Array.isArray(res) ? res : res?.data || [];
       setRestaurants(data);
     } catch (e) {
@@ -102,7 +118,12 @@ export default function ExploreScreen() {
             placeholder="Tìm theo tên nhà hàng, loại hình..."
             placeholderTextColor={COLORS.slate[400]}
             value={search}
-            onChangeText={setSearch}
+            onChangeText={(text) => {
+              setSearch(text);
+              if (text.length > 2) {
+                tracker.trackSearch(text, filtered.length);
+              }
+            }}
           />
         </View>
       </View>
@@ -144,7 +165,10 @@ export default function ExploreScreen() {
           filtered.map((item) => (
             <TouchableOpacity
               key={item._id || item.id}
-              onPress={() => router.push(`/restaurant/${item._id || item.id}`)}
+              onPress={() => {
+                tracker.trackClick('restaurant', item._id || item.id, { filter: selectedFilter });
+                router.push(`/restaurant/${item._id || item.id}`);
+              }}
               style={{
                 backgroundColor: '#ffffff',
                 borderRadius: 16,
@@ -166,7 +190,7 @@ export default function ExploreScreen() {
                     {item.tenQuan || item.name || 'Nhà hàng GastroWise'}
                   </Text>
                   <Text style={{ fontSize: 12, color: COLORS.slate[500], marginTop: 2 }} numberOfLines={1}>
-                    📍 {item.diaChi || item.address || 'TP. Hồ Chí Minh'}
+                    {item.distance !== undefined ? `📍 ${item.distance}km • ` : '📍 '}{item.diaChi || item.address || 'TP. Hồ Chí Minh'}
                   </Text>
                 </View>
 
