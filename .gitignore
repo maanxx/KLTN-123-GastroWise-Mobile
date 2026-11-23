@@ -26,12 +26,17 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
+# macOS & OS
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.pem
 
-# local env files
+# Environment Variables & Secrets (KHÔNG PUSH IP CÁ NHÂN / SECRETS)
+.env
+.env.*
 .env*.local
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -52,4 +57,3 @@ task.md
 task_plan.md
 scratchpad_*.md
 *.temp.md
-
