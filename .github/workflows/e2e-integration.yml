@@ -2,7 +2,7 @@ name: End-to-End Integration Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feature/*]
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
@@ -34,18 +34,14 @@ jobs:
 
       - name: Build backend Docker images
         working-directory: backend
-        run: docker compose -f docker-compose.yml build
+        run: docker compose -f docker-compose.yml build core-service planning-service
 
       - name: Start Docker Compose (detached)
         working-directory: backend
         run: |
-          docker compose -f docker-compose.yml up -d
+          docker compose -f docker-compose.yml up -d mongo-test core-service planning-service nginx-gateway
           # Wait for gateway health (max 60s)
-          timeout 60 bash -c 'while ! curl -s http://localhost:8080/health | grep -q ok; do sleep 2; done'
-
-      - name: Install mobile dependencies
-        working-directory: mobile
-        run: npm ci
+          timeout 60 bash -c 'while ! curl -s http://localhost:8080/health | grep -q "UP"; do sleep 2; done'
 
       - name: Ensure e2e script is executable
         working-directory: mobile
@@ -55,7 +51,6 @@ jobs:
         working-directory: mobile
         env:
           EXPO_PUBLIC_API_URL: http://localhost:8080/api/v1
-          JWT_SECRET: test_jwt_secret_32_characters_long_for_m22
         run: ./scripts/e2e.sh
 
       - name: Gather Docker logs on failure
