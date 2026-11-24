@@ -10,14 +10,14 @@ log "API base URL: $EXPO_PUBLIC_API_URL"
 # 1. Register test user to obtain live JWT
 RANDOM_SUFFIX=$(date +%s)_$RANDOM
 EMAIL="testci_${RANDOM_SUFFIX}@example.com"
-log "Registering test user: $EMAIL"
+USERNAME="user_${RANDOM_SUFFIX}"
+log "Registering test user: $EMAIL ($USERNAME)"
 
 REG_PAYLOAD=$(cat <<EOF
 {
-  "name": "CI Test User",
+  "username": "$USERNAME",
   "email": "$EMAIL",
-  "password": "Password123!",
-  "phone": "0912345678"
+  "password": "Password123!"
 }
 EOF
 )
@@ -45,7 +45,7 @@ try {
 ' "$BODY")
 
 if [[ -z "$TOKEN" ]]; then
-  echo "FAIL: Could not extract accessToken from registration response"
+  echo "FAIL: Could not extract accessToken from registration response: $BODY"
   exit 1
 fi
 log "Successfully obtained JWT token"
@@ -75,7 +75,7 @@ code=$(request GET /restaurants/weather-recommend)
 [[ $code -eq 200 ]] || { echo "FAIL C‑01 Weather ($code)"; exit 1; }
 
 log "E‑01 Generate itinerary (expect 200)"
-payload='{"preferences":["vegan"],"timeRange":"2023-01-01T08:00/2023-01-01T18:00","budget":200000}'
+payload='{"prompt":"Kham pha am thuc Sai Gon","start_time":"09:00","end_time":"18:00","budget":200000,"lat":10.7769,"lng":106.7009}'
 code=$(request POST /itineraries/generate "$payload")
 [[ $code -eq 200 ]] || { echo "FAIL E‑01 Itinerary ($code)"; exit 1; }
 
