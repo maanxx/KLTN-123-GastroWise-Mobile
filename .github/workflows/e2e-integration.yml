@@ -1,0 +1,78 @@
+name: End-to-End Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Mobile repository
+        uses: actions/checkout@v4
+        with:
+          path: mobile
+
+      - name: Checkout Backend repository (fixed branch)
+        uses: actions/checkout@v4
+        with:
+          repository: maanxx/KLTN-123-GastroWise-BE
+          ref: fix/m2.3-backend-integration-security
+          path: backend
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Build backend Docker images
+        working-directory: backend
+        run: docker compose -f docker-compose.yml build
+
+      - name: Start Docker Compose (detached)
+        working-directory: backend
+        run: |
+          docker compose -f docker-compose.yml up -d
+          # Wait for gateway health (max 60s)
+          timeout 60 bash -c 'while ! curl -s http://localhost:8080/health | grep -q ok; do sleep 2; done'
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Ensure e2e script is executable
+        working-directory: mobile
+        run: chmod +x scripts/e2e.sh
+
+      - name: Run End-to-End tests
+        working-directory: mobile
+        env:
+          EXPO_PUBLIC_API_URL: http://localhost:8080/api/v1
+          JWT_SECRET: test_jwt_secret_32_characters_long_for_m22
+        run: ./scripts/e2e.sh
+
+      - name: Gather Docker logs on failure
+        if: failure()
+        working-directory: backend
+        run: |
+          docker compose logs > docker-logs.txt
+          tar -czf logs.tar.gz docker-logs.txt
+
+      - name: Upload logs artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-logs
+          path: backend/logs.tar.gz
+
+      - name: Tear down Docker Compose
+        if: always()
+        working-directory: backend
+        run: docker compose down -v
