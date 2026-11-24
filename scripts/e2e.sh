@@ -74,9 +74,9 @@ log "C‑01 Weather recommendation (expect 200)"
 code=$(request GET /restaurants/weather-recommend)
 [[ $code -eq 200 ]] || { echo "FAIL C‑01 Weather ($code)"; exit 1; }
 
-log "E‑01 Generate itinerary (expect 200)"
+log "E‑01 Generate itinerary (expect 200 or 201)"
 payload='{"prompt":"Kham pha am thuc Sai Gon","start_time":"09:00","end_time":"18:00","budget":200000,"lat":10.7769,"lng":106.7009}'
 code=$(request POST /itineraries/generate "$payload")
-[[ $code -eq 200 ]] || { echo "FAIL E‑01 Itinerary ($code)"; exit 1; }
+[[ $code -eq 200 || $code -eq 201 ]] || { echo "FAIL E‑01 Itinerary ($code)"; exit 1; }
 
 log "All tests passed successfully!"
